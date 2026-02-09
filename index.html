@@ -3,589 +3,822 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Banca Personal - Sistema de Gestión</title>
+    <title>LOGÍSTICA - Control de Personal</title>
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2563eb">
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkbg: '#0f172a',
-                        darkcard: '#1e293b',
-                        darktext: '#f1f5f9'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+      }
+    }
+    </script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <link rel="manifest" id="my-manifest">
+    <script>
+        const manifest = {
+            "name": "Logística App",
+            "short_name": "Logística",
+            "start_url": ".",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#2563eb",
+            "orientation": "portrait",
+            "icons": [
+                { "src": "https://cdn-icons-png.flaticon.com/512/716/716736.png", "sizes": "192x192", "type": "image/png" },
+                { "src": "https://cdn-icons-png.flaticon.com/512/716/716736.png", "sizes": "512x512", "type": "image/png" }
+            ]
+        };
+        const stringManifest = JSON.stringify(manifest);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        document.querySelector('#my-manifest').setAttribute('href', manifestURL);
+    </script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .dark .glass-panel { background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(255, 255, 255, 0.05); color: #f1f5f9; }
-        .sidebar-link { transition: all 0.2s ease; cursor: pointer; }
-        .sidebar-link:hover, .sidebar-link.active { background-color: #f0fdf4; border-left: 4px solid #1e3a8a; color: #1e3a8a; }
-        .dark .sidebar-link:hover, .dark .sidebar-link.active { background-color: #1e293b; border-left-color: #60a5fa; color: #60a5fa; }
-        
-        /* Scrollbar oculta para sensación app */
-        ::-webkit-scrollbar { width: 4px; height: 4px; } 
-        ::-webkit-scrollbar-track { background: transparent; } 
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        
-        .fade-in { animation: fadeIn 0.4s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .smoke-effect { animation: smokeOut 1.5s ease-out forwards; }
-        @keyframes smokeOut { 0% { opacity: 1; filter: blur(0px); } 100% { opacity: 0; filter: blur(10px); display: none; visibility: hidden; } }
-        
-        /* Mobile Sidebar Transition */
-        #mainSidebar { transition: transform 0.3s ease-in-out; }
-        .sidebar-open { transform: translateX(0) !important; }
-        .sidebar-closed { transform: translateX(-100%); }
-        /* MD: Reset transform for desktop */
-        @media (min-width: 768px) { .sidebar-closed { transform: translateX(0); } }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { -webkit-tap-highlight-color: transparent; }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 h-screen overflow-hidden flex flex-col dark:bg-darkbg dark:text-darktext transition-colors duration-300">
+<body class="bg-gray-100 dark:bg-slate-950 overscroll-none transition-colors duration-300">
+    <div id="root"></div>
 
-    <div id="toastContainer" class="fixed top-6 left-1/2 transform -translate-x-1/2 z-[200] flex flex-col items-center gap-2 pointer-events-none w-11/12 max-w-sm"></div>
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect, useRef, useMemo } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+          Truck, Users, Moon, Sun, FileSpreadsheet, CheckCircle2, 
+          AlertCircle, UserMinus, UserX, UserPlus, Settings, X, Search, 
+          Plus, ToggleLeft, ToggleRight, Trash2, RotateCcw, 
+          Check, Loader2, ClipboardCheck
+        } from 'lucide-react';
 
-    <!-- AUTH & SPLASH -->
-    <div id="splashScreen" class="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center hidden">
-        <div class="text-center text-white"><i class="fas fa-landmark text-6xl mb-4 text-blue-400 animate-pulse"></i><h1 class="text-4xl font-bold mb-2">Bienvenido</h1><h2 id="splashUser" class="text-2xl font-light text-blue-200">Usuario</h2></div>
-    </div>
-
-    <div id="authScreen" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center fade-in p-4">
-        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md">
-            <div class="text-center mb-6"><div class="inline-block p-4 rounded-full bg-blue-100 text-blue-900 mb-4"><i class="fas fa-landmark text-3xl"></i></div><h1 class="text-2xl font-bold text-slate-800">Banca Personal</h1></div>
-            <div id="loginForm">
-                <input type="text" id="loginUser" class="w-full p-4 border border-slate-200 rounded-xl mb-4 bg-slate-50 focus:bg-white transition outline-none focus:ring-2 focus:ring-blue-500" placeholder="Usuario">
-                <input type="password" id="loginPass" class="w-full p-4 border border-slate-200 rounded-xl mb-6 bg-slate-50 focus:bg-white transition outline-none focus:ring-2 focus:ring-blue-500" placeholder="Contraseña">
-                <button onclick="app.login()" class="w-full bg-blue-900 text-white font-bold py-4 rounded-xl hover:bg-blue-800 transition shadow-lg active:scale-95 transform">Iniciar Sesión</button>
-                <p class="mt-6 text-center text-sm text-slate-600">¿No tienes cuenta? <a href="#" onclick="app.toggleAuth('register')" class="text-blue-600 font-bold">Regístrate</a></p>
-            </div>
-            <div id="registerForm" class="hidden">
-                <input type="text" id="regUser" class="w-full p-4 border border-slate-200 rounded-xl mb-4 bg-slate-50" placeholder="Nuevo Usuario">
-                <input type="password" id="regPass" class="w-full p-4 border border-slate-200 rounded-xl mb-6 bg-slate-50" placeholder="Crear Contraseña">
-                <button onclick="app.register()" class="w-full bg-green-600 text-white font-bold py-4 rounded-xl hover:bg-green-700 transition shadow-lg active:scale-95 transform">Crear Cuenta</button>
-                <p class="mt-6 text-center text-sm text-slate-600">¿Ya tienes cuenta? <a href="#" onclick="app.toggleAuth('login')" class="text-blue-600 font-bold">Ingresa aquí</a></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- APP CONTAINER -->
-    <div id="appContainer" class="hidden flex h-full relative">
+        // --- CONFIGURACIÓN DE FLOTA ---
+        const BORNEO_TRUCKS = new Set(["C35", "C38", "C39", "C40", "C41", "C42", "C43", "C44"]);
+        const FLETERO_TRUCKS = new Set(["F1", "F2"]);
         
-        <!-- MOBILE OVERLAY -->
-        <div id="sidebarOverlay" onclick="app.toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden backdrop-blur-sm transition-opacity"></div>
+        const INITIAL_TRUCKS = [
+            "C14", "C15", "C16", "C17", "C18", "C19", "C20", 
+            "C26", "C27", "C28", "C29", "C30", "C31", "C32", 
+            "C33", "C34", "C36", "C37", "F2", "F1", 
+            "C35", "C38", "C39", "C40", "C41", "C42", "C44", "C43"
+        ];
 
-        <!-- SIDEBAR -->
-        <aside id="mainSidebar" class="fixed inset-y-0 left-0 w-72 bg-white dark:bg-darkcard border-r dark:border-slate-700 flex flex-col shadow-2xl z-40 transform -translate-x-full md:translate-x-0 md:relative md:w-64 transition-transform duration-300">
-            <div class="p-6 border-b dark:border-slate-700 flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50">
-                <div class="relative group">
-                    <div id="sidebarAvatarContainer" class="w-12 h-12 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-xl overflow-hidden border-2 border-white shadow-sm">
-                        <span id="sidebarInitial">U</span>
-                        <img id="sidebarImg" src="" class="hidden w-full h-full object-cover">
-                    </div>
-                    <div class="absolute -bottom-1 -right-1 bg-white dark:bg-darkcard rounded-full p-1 shadow-sm"><i class="fas fa-check-circle text-blue-500 text-xs"></i></div>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <h2 class="font-bold dark:text-white truncate text-lg">Finanzas</h2>
-                    <p class="text-xs text-slate-500 font-medium uppercase truncate" id="sidebarUserName">Usuario</p>
-                </div>
-                <!-- Close button for mobile -->
-                <button onclick="app.toggleSidebar()" class="md:hidden text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
-            </div>
+        const INITIAL_STAFF_DATA = [
+            { id: 1, name: "Juan Cabrera", role: "Entregador", isDriver: false },
+            { id: 2, name: "Hector Valiente", role: "Ayudante", isDriver: true },
+            { id: 3, name: "Bryan Britez", role: "Volante", isDriver: false },
+            { id: 4, name: "Roberto Lopez", role: "Entregador", isDriver: false },
+            { id: 5, name: "Juan Villamayor", role: "Ayudante", isDriver: true },
+            { id: 6, name: "Marcelo Melgarejo", role: "Entregador", isDriver: true },
+            { id: 7, name: "Lucas Martinez", role: "Ayudante", isDriver: false },
+            { id: 8, name: "Hugo Olmedo", role: "Entregador", isDriver: true },
+            { id: 9, name: "Diego Cordoba", role: "Ayudante", isDriver: false },
+            { id: 10, name: "Ismael Gimenez", role: "Volante", isDriver: true },
+            { id: 11, name: "Isaias Jara", role: "Entregador", isDriver: true },
+            { id: 12, name: "Edgar Avalos", role: "Ayudante", isDriver: false },
+            { id: 13, name: "Jose Caballero", role: "Entregador", isDriver: true },
+            { id: 14, name: "Alexander Martinez", role: "Ayudante", isDriver: false },
+            { id: 15, name: "Rody Gonzalez", role: "Entregador", isDriver: true },
+            { id: 16, name: "Lizandro Cuba", role: "Ayudante", isDriver: false },
+            { id: 17, name: "Juan Samudio", role: "Entregador", isDriver: true },
+            { id: 18, name: "Dario Rolon", role: "Ayudante", isDriver: false },
+            { id: 19, name: "Jose Orrego", role: "Volante", isDriver: true },
+            { id: 20, name: "Ayrton Delgado", role: "Entregador", isDriver: true },
+            { id: 21, name: "Joaquin Ayala", role: "Ayudante", isDriver: false },
+            { id: 22, name: "Mathias Huesped", role: "Entregador", isDriver: true },
+            { id: 23, name: "Victor Espinoza", role: "Ayudante", isDriver: false },
+            { id: 24, name: "Junior Caceres", role: "Volante", isDriver: false },
+            { id: 25, name: "Nicolas Vega", role: "Entregador", isDriver: false },
+            { id: 26, name: "Alberto Caceres", role: "Ayudante", isDriver: true },
+            { id: 27, name: "Cesar Duarte", role: "Volante", isDriver: true },
+            { id: 28, name: "Antonio Mereles", role: "Entregador", isDriver: false },
+            { id: 29, name: "Gabriel Flores", role: "Ayudante", isDriver: true },
+            { id: 30, name: "Nestor Ruis Diaz", role: "Entregador", isDriver: true },
+            { id: 31, name: "Juan Velasquez", role: "Ayudante", isDriver: false },
+            { id: 32, name: "Arsenio Mendieta", role: "Entregador", isDriver: true },
+            { id: 33, name: "Jorge Jara", role: "Ayudante", isDriver: false },
+            { id: 34, name: "Lucas Infran", role: "Volante", isDriver: false },
+            { id: 35, name: "Juan Pereira", role: "Entregador", isDriver: true },
+            { id: 36, name: "Alberto Franco", role: "Ayudante", isDriver: false },
+            { id: 37, name: "Carlos Ruiz", role: "Entregador", isDriver: true },
+            { id: 38, name: "Fletero 1", role: "Ayudante", isDriver: false, isFletero: true },
+            { id: 39, name: "Nicolas Vera", role: "Entregador", isDriver: false },
+            { id: 40, name: "Fletero 2", role: "Ayudante", isDriver: false, isFletero: true },
+            { id: 41, name: "Nicolas Rojas", role: "Entregador", isDriver: true },
+            { id: 42, name: "Marcos Sanchez", role: "Entregador", isDriver: true },
+            { id: 43, name: "Cristhian Benitez", role: "Entregador", isDriver: true },
+            { id: 44, name: "Orlando Penayo", role: "Entregador", isDriver: true },
+            { id: 45, name: "Pablo Quiñonez", role: "Entregador", isDriver: true },
+            { id: 46, name: "Walter Caballero", role: "Entregador", isDriver: true },
+            { id: 47, name: "Juan Rolon", role: "Entregador", isDriver: true },
+            { id: 48, name: "Gustavo Caceres", role: "Entregador", isDriver: true },
+        ];
 
-            <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
-                <button onclick="app.navigate('dashboard')" id="nav-dashboard" class="sidebar-link active w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-4 dark:text-slate-300 text-sm font-medium">
-                    <i class="fas fa-chart-pie w-5 text-center text-lg"></i> Dashboard
-                </button>
-                <button onclick="app.navigate('transactions')" id="nav-transactions" class="sidebar-link w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-4 dark:text-slate-300 text-sm font-medium">
-                    <i class="fas fa-exchange-alt w-5 text-center text-lg"></i> Movimientos
-                </button>
-                <button onclick="app.navigate('loans')" id="nav-loans" class="sidebar-link w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-4 dark:text-slate-300 text-sm font-medium">
-                    <i class="fas fa-hand-holding-usd w-5 text-center text-lg"></i> Préstamos
-                </button>
-                <button onclick="app.navigate('calendar')" id="nav-calendar" class="sidebar-link w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-4 dark:text-slate-300 text-sm font-medium">
-                    <i class="fas fa-calendar-alt w-5 text-center text-lg"></i> Calendario
-                </button>
-                <button onclick="app.navigate('reminders')" id="nav-reminders" class="sidebar-link w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-4 dark:text-slate-300 text-sm font-medium">
-                    <i class="fas fa-bell w-5 text-center text-lg"></i> Alertas
-                </button>
-                <button onclick="app.navigate('settings')" id="nav-settings" class="sidebar-link w-full text-left px-4 py-3.5 rounded-xl flex items-center gap-4 dark:text-slate-300 text-sm font-medium">
-                    <i class="fas fa-cog w-5 text-center text-lg"></i> Configuración
-                </button>
-            </nav>
-            <div class="p-4 border-t dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
-                <button onclick="app.logout()" class="w-full px-4 py-3 border border-slate-200 rounded-xl hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition mb-2 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700 text-sm font-medium flex items-center justify-center gap-2">
-                    <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
-                </button>
-                <span class="text-[10px] text-slate-400 font-mono">v1.0.8 Mobile</span>
-            </div>
-        </aside>
+        const createEmptyAssignments = () => {
+            const empty = {};
+            INITIAL_TRUCKS.forEach(truckId => {
+                empty[truckId] = { driver: null, helper1: null, helper2: null, observation: "" };
+            });
+            return empty;
+        };
 
-        <main class="flex-1 flex flex-col overflow-hidden dark:bg-darkbg transition-colors w-full">
-            <header class="h-16 bg-white dark:bg-darkcard border-b dark:border-slate-700 flex items-center justify-between px-4 md:px-6 shadow-sm z-20 shrink-0">
-                <div class="flex items-center gap-3">
-                    <button onclick="app.toggleSidebar()" class="md:hidden text-slate-600 dark:text-white p-2 -ml-2 rounded-lg active:bg-slate-100 dark:active:bg-slate-700">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
-                    <div id="weatherWidget" class="text-slate-500 text-xs md:text-sm font-medium flex items-center gap-1">
-                        <i class="fas fa-spinner fa-spin"></i>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <div id="clockTime" class="text-lg font-bold dark:text-white leading-tight">00:00</div>
-                    <div id="clockDate" class="text-[10px] md:text-xs text-slate-500 font-medium uppercase tracking-wide">Fecha...</div>
-                </div>
-            </header>
+        const INITIAL_ASSIGNMENTS = {
+            "C15": { driver: 1, helper1: 2, helper2: 3, observation: "" },
+            "C16": { driver: 4, helper1: 5, helper2: null, observation: "" },
+            "C17": { driver: 6, helper1: 7, helper2: null, observation: "" },
+            "C20": { driver: 8, helper1: 9, helper2: 10, observation: "" },
+            "C26": { driver: 11, helper1: 12, helper2: null, observation: "" },
+            "C27": { driver: 13, helper1: 14, helper2: null, observation: "" },
+            "C28": { driver: 15, helper1: 16, helper2: null, observation: "" },
+            "C29": { driver: 17, helper1: 18, helper2: 19, observation: "" },
+            "C30": { driver: 20, helper1: 21, helper2: null, observation: "" },
+            "C31": { driver: 22, helper1: 23, helper2: 24, observation: "" },
+            "C32": { driver: 25, helper1: 26, helper2: 27, observation: "" },
+            "C33": { driver: 28, helper1: 29, helper2: null, observation: "" },
+            "C34": { driver: 30, helper1: 31, helper2: null, observation: "" },
+            "C36": { driver: 32, helper1: 33, helper2: 34, observation: "" },
+            "C37": { driver: 35, helper1: 36, helper2: null, observation: "" },
+            "F2": { driver: 37, helper1: 38, helper2: null, observation: "" },
+            "F1": { driver: 39, helper1: 40, helper2: null, observation: "" },
+            "C35": { driver: 41, helper1: null, helper2: null, observation: "" },
+            "C38": { driver: 42, helper1: null, helper2: null, observation: "" },
+            "C39": { driver: 43, helper1: null, helper2: null, observation: "" },
+            "C40": { driver: 44, helper1: null, helper2: null, observation: "" },
+            "C41": { driver: 45, helper1: null, helper2: null, observation: "" },
+            "C42": { driver: 46, helper1: null, helper2: null, observation: "" },
+            "C44": { driver: 47, helper1: null, helper2: null, observation: "" },
+            "C43": { driver: 48, helper1: null, helper2: null, observation: "" },
+        };
 
-            <div class="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6" id="contentArea">
-                
-                <!-- DASHBOARD -->
-                <div id="view-dashboard" class="space-y-5 fade-in">
-                    <div class="flex justify-between items-center">
-                        <h2 class="text-xl md:text-2xl font-bold dark:text-white">Resumen</h2>
-                        <button onclick="app.openExportModal()" class="bg-blue-900 active:bg-blue-800 text-white px-3 py-2 rounded-lg text-xs md:text-sm font-medium shadow flex items-center gap-2">
-                            <i class="fas fa-download"></i> <span class="hidden sm:inline">Reportes</span>
-                        </button>
-                    </div>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="glass-panel p-5 rounded-2xl border-l-4 border-blue-900 shadow-sm">
-                            <p class="text-xs font-bold uppercase text-slate-500 tracking-wider">Balance Total</p>
-                            <h3 id="dashBalance" class="text-3xl font-bold dark:text-white mt-1 text-slate-800">0</h3>
-                        </div>
-                        <div class="glass-panel p-5 rounded-2xl border-l-4 border-emerald-500 shadow-sm">
-                            <p class="text-xs font-bold uppercase text-slate-500 tracking-wider">Ingresos (Mes)</p>
-                            <h3 id="dashIncome" class="text-3xl font-bold text-emerald-600 mt-1">0</h3>
-                        </div>
-                        <div class="glass-panel p-5 rounded-2xl border-l-4 border-rose-500 shadow-sm">
-                            <p class="text-xs font-bold uppercase text-slate-500 tracking-wider">Egresos (Mes)</p>
-                            <h3 id="dashExpense" class="text-3xl font-bold text-rose-600 mt-1">0</h3>
-                        </div>
-                    </div>
+        const StaffSelectorModal = ({ isOpen, onClose, availableStaff, onAssign, onMarkAbsent, darkMode, truckId, isTruckDeparted }) => {
+            const [isMarkingAbsent, setIsMarkingAbsent] = useState(false);
+            const [absentReason, setAbsentReason] = useState("");
 
-                    <div id="alertsWidget" class="hidden bg-white dark:bg-darkcard p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                        <h3 class="font-bold text-xs uppercase mb-3 dark:text-white flex items-center gap-2">
-                            <i class="fas fa-exclamation-circle text-orange-500"></i> Vencimientos
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="alertsContainer"></div>
-                    </div>
+            useEffect(() => {
+                if(isOpen) {
+                    setIsMarkingAbsent(false);
+                    setAbsentReason("");
+                }
+            }, [isOpen]);
 
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        <div class="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <h3 class="font-bold mb-4 dark:text-white text-sm">Distribución de Gastos</h3>
-                            <div class="h-56 flex justify-center"><canvas id="expenseChart"></canvas></div>
-                        </div>
-                        <div class="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="font-bold dark:text-white text-sm">Recientes</h3>
-                                <button onclick="app.navigate('transactions')" class="text-xs text-blue-600 font-bold uppercase">Ver todo</button>
+            const handleEmptySlot = () => {
+                if (isTruckDeparted) {
+                    if (!window.confirm(`⚠️ EL MÓVIL ${truckId} ESTÁ EN RUTA.\n\n¿Estás seguro que quieres dejar este lugar VACÍO?`)) {
+                        return;
+                    }
+                }
+                onAssign(null);
+            };
+
+            const handleAbsentFlow = (reason) => {
+                if (isTruckDeparted) {
+                    if (!window.confirm(`⚠️ EL MÓVIL ${truckId} ESTÁ EN RUTA.\n\n¿Estás seguro que quieres marcar AUSENTE a un miembro de un equipo que ya salió?`)) {
+                        return;
+                    }
+                }
+                onMarkAbsent(reason);
+            };
+
+            if (!isOpen) return null;
+
+            if (isMarkingAbsent) {
+                return (
+                    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm`}>
+                        <div className={`${darkMode ? 'bg-slate-900 text-white border border-slate-700' : 'bg-white text-black'} w-full max-w-md rounded-2xl shadow-2xl flex flex-col p-6 animate-in zoom-in duration-200`}>
+                            <h3 className="font-bold text-xl mb-4 text-red-600 flex items-center gap-2">
+                                <UserX /> Marcar como Ausente
+                            </h3>
+                            <p className="mb-2 text-sm font-medium opacity-80">Motivo de la ausencia (Requerido):</p>
+                            
+                            <textarea 
+                                placeholder="Ej: Enfermedad, Permiso, Falta sin aviso..." 
+                                value={absentReason}
+                                onChange={(e) => setAbsentReason(e.target.value)}
+                                className="w-full p-4 rounded-xl border-2 border-slate-300 bg-slate-50 dark:bg-slate-800 dark:border-slate-600 mb-6 outline-none focus:border-red-500 text-black dark:text-white font-normal h-32 resize-none"
+                                autoFocus
+                            />
+
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={() => setIsMarkingAbsent(false)}
+                                    className="flex-1 py-3 rounded-xl font-bold bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-white"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    onClick={() => handleAbsentFlow(absentReason || "Sin motivo especificado")}
+                                    className="flex-1 py-3 rounded-xl font-bold bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-500/30"
+                                >
+                                    Confirmar
+                                </button>
                             </div>
-                            <div class="overflow-x-auto -mx-2">
-                                <table class="w-full text-sm min-w-[300px]">
-                                    <tbody id="dashRecentTable" class="divide-y dark:divide-slate-700 dark:text-slate-300"></tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
-                </div>
+                );
+            }
 
-                <!-- TRANSACTIONS -->
-                <div id="view-transactions" class="hidden space-y-5 fade-in">
-                    <h2 class="text-xl font-bold dark:text-white">Movimientos</h2>
-                    <div class="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                        <div class="space-y-3">
-                            <div class="flex gap-3">
-                                <select id="transType" class="flex-1 p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm outline-none focus:ring-2 focus:ring-blue-500"><option value="expense">Egreso</option><option value="income">Ingreso</option></select>
-                                <input type="text" id="transAmount" placeholder="Monto" class="flex-1 p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm outline-none focus:ring-2 focus:ring-blue-500" oninput="app.formatInput(this)">
-                            </div>
-                            <input type="text" id="transDesc" placeholder="Concepto (Ej: Super)" class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm outline-none focus:ring-2 focus:ring-blue-500">
-                            <div class="flex gap-3">
-                                <select id="transCat" class="flex-1 p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm outline-none"><option>General</option><option>Alimentos</option><option>Transporte</option><option>Servicios</option><option>Ocio</option><option>Salud</option><option>Sueldo</option></select>
-                                <input type="date" id="transDate" class="flex-1 p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm outline-none">
-                            </div>
-                            <button onclick="app.addTransaction()" class="w-full bg-blue-900 text-white font-bold py-3 rounded-xl shadow-md active:scale-95 transition text-sm">Guardar Registro</button>
+            return (
+                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm`}>
+                    <div className={`${darkMode ? 'bg-slate-900 text-white border border-slate-700' : 'bg-white text-black'} w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[85vh]`}>
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 rounded-t-2xl">
+                            <h3 className="font-black text-lg">ASIGNAR PERSONAL</h3>
+                            <button onClick={onClose}><X size={28} className="text-slate-500 hover:text-red-500" /></button>
                         </div>
-                    </div>
-                    <div class="bg-white dark:bg-darkcard rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-slate-700">
-                         <div class="overflow-x-auto"><table class="w-full text-sm text-left whitespace-nowrap"><thead class="bg-slate-50 dark:bg-slate-800 dark:text-white text-xs uppercase"><tr><th class="p-4">Fecha</th><th class="p-4">Concepto</th><th class="p-4 text-right">Monto</th><th class="p-4 text-center"></th></tr></thead><tbody id="transactionsTableBody" class="divide-y dark:divide-slate-700 dark:text-slate-300"></tbody></table></div>
-                    </div>
-                </div>
-
-                <!-- LOANS -->
-                <div id="view-loans" class="hidden space-y-5 fade-in">
-                    <h2 class="text-xl font-bold dark:text-white">Préstamos</h2>
-                    <div class="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                        <div class="space-y-3">
-                            <input type="text" id="loanName" placeholder="Nombre del Deudor" class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm">
-                            <div class="flex gap-3">
-                                <input type="text" id="loanAmount" placeholder="Monto" class="flex-1 p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm" oninput="app.formatInput(this)">
-                                <input type="date" id="loanDate" class="flex-1 p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm">
-                            </div>
-                            <button onclick="app.addLoan()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-md active:scale-95 transition text-sm">Registrar Préstamo</button>
-                        </div>
-                    </div>
-                    <div class="bg-white dark:bg-darkcard rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-slate-700">
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-sm text-left whitespace-nowrap"><thead class="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-200 font-bold text-xs uppercase"><tr><th class="p-4">Deudor</th><th class="p-4">Prestado</th><th class="p-4">Promesa</th><th class="p-4 text-right">Monto</th><th class="p-4 text-center"></th></tr></thead><tbody id="loansTableBody" class="divide-y divide-slate-100 dark:divide-slate-700 dark:text-slate-300"></tbody></table>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CALENDAR -->
-                <div id="view-calendar" class="hidden space-y-5 fade-in">
-                    <div class="flex justify-between items-center"><h2 class="text-xl font-bold dark:text-white">Calendario</h2><div class="flex gap-2"><button onclick="app.changeMonth(-1)" class="p-2 border rounded-lg bg-white dark:bg-slate-700 dark:text-white shadow-sm active:scale-90"><</button><span id="calCurrentMonth" class="px-4 py-2 font-bold bg-white dark:bg-slate-700 rounded-lg border dark:text-white text-sm shadow-sm min-w-[140px] text-center">Mes</span><button onclick="app.changeMonth(1)" class="p-2 border rounded-lg bg-white dark:bg-slate-700 dark:text-white shadow-sm active:scale-90">></button></div></div>
-                    <div class="bg-white dark:bg-darkcard p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                        <div class="grid grid-cols-7 gap-1 mb-2 text-center text-xs font-bold text-slate-400 uppercase"><div>D</div><div>L</div><div>M</div><div>M</div><div>J</div><div>V</div><div>S</div></div>
-                        <div id="calendarGrid" class="grid grid-cols-7 gap-1"></div>
-                    </div>
-                </div>
-
-                <!-- REMINDERS -->
-                <div id="view-reminders" class="hidden space-y-5 fade-in">
-                    <h2 class="text-xl font-bold dark:text-white">Alertas</h2>
-                    <div class="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
-                        <div class="space-y-3">
-                            <input type="text" id="remTitle" placeholder="Título Alerta" class="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm">
-                            <div class="flex gap-3">
-                                <input type="datetime-local" id="remDate" class="flex-1 p-3 border border-slate-200 rounded-xl bg-slate-50 dark:bg-slate-700 dark:text-white dark:border-slate-600 text-sm">
-                                <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-700 px-3 rounded-xl border border-slate-200 dark:border-slate-600"><input type="checkbox" id="remSound" checked class="w-5 h-5"><label class="text-sm dark:text-white">Sonido</label></div>
-                            </div>
-                            <button onclick="app.addReminder()" class="w-full bg-rose-600 text-white font-bold py-3 rounded-xl shadow-md active:scale-95 transition text-sm">Programar Alerta</button>
-                        </div>
-                    </div>
-                    <div class="bg-white dark:bg-darkcard rounded-2xl shadow-sm overflow-hidden border border-slate-100 dark:border-slate-700">
-                        <div class="overflow-x-auto"><table class="w-full text-sm text-left whitespace-nowrap"><tbody id="remindersTable" class="divide-y dark:divide-slate-700 dark:text-slate-300"></tbody></table></div>
-                    </div>
-                </div>
-
-                <!-- SETTINGS -->
-                <div id="view-settings" class="hidden space-y-5 fade-in">
-                    <h2 class="text-xl font-bold dark:text-white">Configuración</h2>
-                    <div class="bg-white dark:bg-darkcard p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-5">
                         
-                        <!-- Backup (Priority) -->
-                        <div class="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-xl border border-emerald-100 dark:border-emerald-800/30">
-                            <h3 class="font-bold text-emerald-800 dark:text-emerald-400 text-sm mb-3">Base de Datos</h3>
-                            <button onclick="app.downloadBackup()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-sm flex items-center justify-center gap-2 active:scale-95 transition text-sm">
-                                <i class="fas fa-cloud-download-alt"></i> Descargar Copia
+                        <div className="p-3 grid grid-cols-2 gap-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                            <button 
+                                onClick={() => setIsMarkingAbsent(true)}
+                                className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50 transition-colors font-bold text-sm border border-red-200 dark:border-red-800"
+                            >
+                                <UserX size={20} />
+                                <span>MARCAR AUSENTE</span>
+                            </button>
+                            <button 
+                                onClick={handleEmptySlot}
+                                className="flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600 transition-colors font-bold text-sm border border-slate-300 dark:border-slate-600"
+                            >
+                                <UserMinus size={20} />
+                                <span>DEJAR VACÍO</span>
                             </button>
                         </div>
 
-                        <div class="flex items-center gap-4 py-2 border-b dark:border-slate-700"><div id="settingsAvatarPreview" class="w-14 h-14 rounded-full bg-blue-900 text-white flex items-center justify-center font-bold text-xl overflow-hidden shadow-sm">U</div><input type="file" id="profilePicInput" accept="image/*" class="text-xs w-full"></div>
-                        <div class="flex justify-between items-center py-2 border-b dark:border-slate-700"><span class="dark:text-white text-sm font-medium">Modo Oscuro</span><button onclick="app.toggleDarkMode()" class="text-2xl p-2"><i class="fas fa-adjust dark:text-yellow-400 text-slate-400"></i></button></div>
-                        
-                        <div class="space-y-3 pt-2">
-                            <h3 class="font-bold dark:text-white text-sm">Seguridad</h3>
-                            <input type="password" id="newPass" placeholder="Nueva Contraseña" class="w-full p-3 border rounded-xl dark:bg-slate-700 text-sm">
-                            <button onclick="app.changePassword()" class="bg-blue-900 text-white px-4 py-3 rounded-xl w-full text-sm font-medium shadow-sm active:scale-95">Actualizar</button>
+                        <div className="p-3 border-b border-slate-200 dark:border-slate-700">
+                           <div className="relative">
+                             <Search className="absolute left-3 top-3 text-slate-500" size={18} />
+                             <input type="text" placeholder="Buscar personal..." className="w-full pl-10 pr-3 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 dark:text-white border-2 border-transparent focus:border-blue-500 dark:border-slate-700 outline-none font-medium" />
+                           </div>
                         </div>
-                        
-                        <button onclick="app.resetSystem()" class="text-red-600 font-bold w-full text-xs py-3 border border-red-100 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/20 dark:border-red-900/30">Borrar Todo (Reset)</button>
-                    </div>
-                    
-                    <div class="mt-6 p-4 rounded-xl text-center text-xs space-y-2 text-slate-400">
-                        <button onclick="document.getElementById('termsModal').classList.remove('hidden')" class="text-blue-500 underline block w-full py-2">Ver Términos y Condiciones</button>
-                        <p class="opacity-70">Banca Personal v1.0.8</p>
+
+                        <div className="overflow-y-auto p-2 flex-1 space-y-2">
+                          <h4 className="text-xs font-black text-slate-400 uppercase mb-2 px-2 tracking-wider">Disponibles</h4>
+                          {availableStaff.map(person => (
+                            <button
+                              key={person.id}
+                              onClick={() => onAssign(person.id)}
+                              className={`w-full text-left p-4 rounded-xl flex items-center justify-between group transition-all border-2
+                                ${person.isDriver ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800' : 'bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700'}
+                                hover:border-blue-500 dark:hover:border-blue-400
+                              `}
+                            >
+                              <div>
+                                <div className="font-medium text-slate-900 dark:text-white text-base">{person.name}</div>
+                                <div className="text-xs font-normal text-slate-500 dark:text-slate-400 uppercase mt-0.5">{person.role}</div>
+                              </div>
+                              <div className="flex gap-1">
+                                {person.isDriver && (
+                                    <span className="text-[10px] font-bold text-white bg-blue-600 px-2 py-1 rounded shadow-sm tracking-wide">CHOFER</span>
+                                )}
+                                {person.isFletero && (
+                                    <span className="text-[10px] font-bold text-white bg-orange-500 px-2 py-1 rounded shadow-sm tracking-wide">FLETERO</span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                          {availableStaff.length === 0 && (
+                             <div className="text-center py-8 opacity-50 flex flex-col items-center">
+                                <Users size={40} className="mb-2"/>
+                                <p className="font-medium">No hay nadie disponible</p>
+                             </div>
+                          )}
+                        </div>
                     </div>
                 </div>
-            </div>
-        </main>
-    </div>
+            );
+        };
 
-    <!-- Modals -->
-    <div id="exportModal" class="fixed inset-0 z-[60] bg-black/60 hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl w-full max-w-xs animate-bounce-short">
-            <h3 class="font-bold mb-4 dark:text-white text-lg">Exportar Datos</h3>
-            <input type="date" id="exportStartDate" class="w-full mb-3 p-3 border rounded-xl dark:bg-slate-700 dark:border-slate-600 dark:text-white text-sm">
-            <input type="date" id="exportEndDate" class="w-full mb-5 p-3 border rounded-xl dark:bg-slate-700 dark:border-slate-600 dark:text-white text-sm">
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="app.generateExport('pdf')" class="bg-red-600 text-white py-3 rounded-xl font-medium shadow-sm">PDF</button>
-                <button onclick="app.generateExport('csv')" class="bg-green-600 text-white py-3 rounded-xl font-medium shadow-sm">Excel</button>
-            </div>
-            <button onclick="document.getElementById('exportModal').classList.add('hidden')" class="w-full mt-4 text-slate-500 text-sm py-2">Cancelar</button>
-        </div>
-    </div>
+        const ManageStaffModal = ({ isOpen, onClose, staff, onAdd, onDelete, onToggleDriver, newStaffData, setNewStaffData, darkMode }) => {
+            if (!isOpen) return null;
+            return (
+                <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in`}>
+                <div className={`${darkMode ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'} w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col max-h-[90vh]`}>
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 rounded-t-2xl">
+                    <h3 className="font-black text-xl flex items-center gap-2"><Users/> GESTIÓN DE PERSONAL</h3>
+                    <button onClick={onClose}><X size={28}/></button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-4">
+                        <div className={`p-4 rounded-xl mb-6 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-blue-50 border-blue-100'} border-2`}>
+                            <h4 className="font-bold mb-3 flex items-center gap-2 text-blue-600 dark:text-blue-400">Agregar Nuevo</h4>
+                            <div className="flex flex-col gap-3">
+                                <input type="text" value={newStaffData.name} onChange={e => setNewStaffData({ ...newStaffData, name: e.target.value })}
+                                    className="w-full p-3 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-black dark:text-white font-medium outline-none focus:border-blue-500" placeholder="Nombre Completo" />
+                                <div className="flex gap-2">
+                                    <select value={newStaffData.role} onChange={e => setNewStaffData({ ...newStaffData, role: e.target.value })}
+                                        className="flex-1 p-3 rounded-lg border-2 border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-black dark:text-white font-medium outline-none">
+                                        <option value="Entregador">Entregador</option>
+                                        <option value="Ayudante">Ayudante</option>
+                                        <option value="Volante">Volante</option>
+                                    </select>
+                                    <label className={`flex items-center px-4 rounded-lg border-2 cursor-pointer ${newStaffData.isDriver ? 'bg-blue-100 border-blue-300 text-blue-800' : 'bg-white border-slate-200 text-slate-500'}`}>
+                                        <input type="checkbox" checked={newStaffData.isDriver} onChange={e => setNewStaffData({ ...newStaffData, isDriver: e.target.checked })} className="w-5 h-5 mr-2 accent-blue-600"/>
+                                        <span className="font-bold text-sm">Chofer</span>
+                                    </label>
+                                </div>
+                                <button onClick={onAdd} disabled={!newStaffData.name.trim()} className="w-full p-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50">Guardar</button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            {[...staff].sort((a, b) => a.name.localeCompare(b.name)).map(person => (
+                                <div key={person.id} className={`flex items-center justify-between p-3 rounded-lg border-2 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100'} shadow-sm`}>
+                                    <div>
+                                        <div className="font-medium text-lg text-black dark:text-white">{person.name}</div>
+                                        <div className="text-sm font-normal text-slate-500 dark:text-slate-400">{person.role}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                         <button onClick={() => onToggleDriver(person.id)} className={`px-3 py-1.5 rounded-lg font-bold text-xs border-2 ${person.isDriver ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>{person.isDriver ? 'ES CHOFER' : 'NO CHOFER'}</button>
+                                         <button onClick={() => onDelete(person.id)} className="p-2 text-red-500 bg-red-50 rounded-lg hover:bg-red-100"><Trash2 size={20}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div></div>
+            );
+        };
 
-    <div id="alertModal" class="fixed inset-0 z-[70] bg-black/60 hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl text-center w-full max-w-xs shadow-2xl animate-bounce-short">
-            <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4"><i class="fas fa-bell text-3xl animate-pulse"></i></div>
-            <h3 class="font-bold text-xl dark:text-white mb-2">¡Atención!</h3>
-            <p id="alertMessage" class="mb-6 text-slate-600 dark:text-slate-300 text-sm"></p>
-            <button onclick="app.closeAlert()" class="bg-blue-900 text-white px-8 py-3 rounded-xl font-bold shadow-lg active:scale-95 w-full">Entendido</button>
-        </div>
-    </div>
+        const SettingsModal = ({ isOpen, onClose, darkMode, toggleTheme, onOpenManageStaff, onResetDay }) => {
+            if (!isOpen) return null;
+            
+            return (
+                <div 
+                    className="fixed inset-0 z-50 flex items-start justify-end p-4 bg-black/20 backdrop-blur-[2px]"
+                    onClick={onClose}
+                >
+                    <div 
+                        className={`w-64 mt-14 rounded-2xl shadow-2xl border flex flex-col overflow-hidden animate-in slide-in-from-top-5 ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-900'}`}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="p-4 border-b border-slate-200 dark:border-slate-700 font-bold bg-slate-50 dark:bg-slate-900/50">
+                            Configuración
+                        </div>
+                        
+                        <div className="p-2">
+                            <button 
+                                onClick={() => { toggleTheme(); }}
+                                className="w-full text-left p-3 rounded-lg flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            >
+                                {darkMode ? <Sun className="text-orange-400" size={20} /> : <Moon className="text-slate-600" size={20} />}
+                                <span className="font-medium">Tema {darkMode ? 'Claro' : 'Oscuro'}</span>
+                            </button>
 
-    <div id="noteModal" class="fixed inset-0 z-[60] bg-black/60 hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl w-full max-w-xs shadow-2xl">
-            <h3 id="noteDateTitle" class="font-bold mb-3 dark:text-white">Nota del Día</h3>
-            <textarea id="dayNoteInput" class="w-full h-40 p-3 border rounded-xl mb-4 dark:bg-slate-700 dark:text-white dark:border-slate-600 resize-none text-sm"></textarea>
-            <div class="flex justify-end gap-3">
-                <button onclick="document.getElementById('noteModal').classList.add('hidden')" class="text-slate-500 px-3 py-2">Cancelar</button>
-                <button onclick="app.saveNote()" class="bg-blue-900 text-white px-6 py-2 rounded-xl font-medium shadow-sm">Guardar</button>
-            </div>
-        </div>
-    </div>
+                            <button 
+                                onClick={() => { onClose(); onOpenManageStaff(); }}
+                                className="w-full text-left p-3 rounded-lg flex items-center gap-3 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-blue-600 dark:text-blue-400"
+                            >
+                                <Users size={20} />
+                                <span className="font-medium">Gestionar Personal</span>
+                            </button>
 
-    <div id="termsModal" class="fixed inset-0 z-[80] bg-black/60 hidden flex items-center justify-center p-4 backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl max-w-md w-full dark:text-white h-[70vh] flex flex-col shadow-2xl">
-            <h3 class="text-xl font-bold mb-4 border-b pb-2 dark:border-slate-700">Términos</h3>
-            <div class="flex-1 overflow-y-auto pr-2 text-sm text-justify space-y-3 opacity-90">
-                <p><strong>1. Uso Personal:</strong> Licencia exclusiva para el usuario final.</p>
-                <p><strong>2. Privacidad:</strong> Datos locales y encriptados en su dispositivo.</p>
-                <p><strong>3. Propiedad:</strong> Rodrigo Cabrera (Desarrollador).</p>
-                <p><strong>4. Garantía:</strong> Software "tal cual", sin responsabilidad por pérdidas.</p>
-            </div>
-            <button onclick="document.getElementById('termsModal').classList.add('hidden')" class="w-full bg-blue-900 text-white py-3 rounded-xl mt-4 font-bold shadow-lg">Cerrar</button>
-        </div>
-    </div>
+                            <button 
+                                onClick={onResetDay}
+                                className="w-full text-left p-3 rounded-lg flex items-center gap-3 hover:bg-red-50 text-red-600 dark:hover:bg-red-900/20 transition-colors mt-2 border-t border-slate-100 dark:border-slate-700"
+                            >
+                                <RotateCcw size={20} />
+                                <span className="font-bold">Reiniciar Día (Borrar Todo)</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
-    <script>
-        let DB;
-        if (typeof require !== 'undefined') { try { DB = require('./database.js'); } catch (e) {} }
-        if (!DB) {
-            DB = {
-                save: (data) => { localStorage.setItem('banca_db_v1', JSON.stringify(data)); return true; },
-                load: () => { try { return JSON.parse(localStorage.getItem('banca_db_v1')); } catch(e){ return null; } },
-                wipe: () => { localStorage.removeItem('banca_db_v1'); return true; }
+        function App() {
+            const [showSplash, setShowSplash] = useState(true);
+            const [darkMode, setDarkMode] = useState(false);
+            const [currentView, setCurrentView] = useState('dashboard');
+            const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+            const [saveStatus, setSaveStatus] = useState('saved'); 
+            const [searchTerm, setSearchTerm] = useState("");
+            
+            const [assignments, setAssignments] = useState(INITIAL_ASSIGNMENTS);
+            const [truckStatus, setTruckStatus] = useState({}); 
+            const [staff, setStaff] = useState(INITIAL_STAFF_DATA);
+            const [absentStaffIds, setAbsentStaffIds] = useState(new Set());
+            const [absentReasons, setAbsentReasons] = useState({}); 
+            const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+            const [selectedSlot, setSelectedSlot] = useState(null); 
+            const [showStaffModal, setShowStaffModal] = useState(false);
+            const [showManageStaffModal, setShowManageStaffModal] = useState(false);
+            const [showSettingsModal, setShowSettingsModal] = useState(false);
+            const [newStaffData, setNewStaffData] = useState({ name: '', role: 'Ayudante', isDriver: false });
+            const pdfLibraryLoaded = useRef(false);
+
+            useEffect(() => {
+                const timer = setTimeout(() => setShowSplash(false), 2500);
+                const legacyAssignments = localStorage.getItem('logistica_assignments');
+                if (legacyAssignments) {
+                    const today = new Date().toISOString().split('T')[0];
+                    const legacyKey = `logistica_record_${today}`;
+                    if (!localStorage.getItem(legacyKey)) {
+                        const legacyData = {
+                            assignments: JSON.parse(legacyAssignments),
+                            truckStatus: JSON.parse(localStorage.getItem('logistica_status') || '{}'),
+                            absentStaffIds: JSON.parse(localStorage.getItem('logistica_absent') || '[]'),
+                            absentReasons: {}
+                        };
+                        localStorage.setItem(legacyKey, JSON.stringify(legacyData));
+                    }
+                }
+                const savedStaff = localStorage.getItem('logistica_staff');
+                if (savedStaff) setStaff(JSON.parse(savedStaff));
+                if (window.jspdf) pdfLibraryLoaded.current = true;
+                const handleBeforeUnload = (e) => { e.preventDefault(); e.returnValue = ''; return ''; };
+                window.addEventListener('beforeunload', handleBeforeUnload);
+                return () => { clearTimeout(timer); window.removeEventListener('beforeunload', handleBeforeUnload); };
+            }, []);
+
+            useEffect(() => {
+                setIsDataLoaded(false); 
+                const recordKey = `logistica_record_${date}`;
+                const savedRecord = localStorage.getItem(recordKey);
+                if (savedRecord) {
+                    const parsed = JSON.parse(savedRecord);
+                    setAssignments(parsed.assignments || INITIAL_ASSIGNMENTS);
+                    setTruckStatus(parsed.truckStatus || {});
+                    setAbsentStaffIds(new Set(parsed.absentStaffIds || []));
+                    setAbsentReasons(parsed.absentReasons || {});
+                } else {
+                    setAssignments(INITIAL_ASSIGNMENTS);
+                    setTruckStatus({});
+                    setAbsentStaffIds(new Set());
+                    setAbsentReasons({});
+                }
+                setTimeout(() => setIsDataLoaded(true), 50);
+            }, [date]);
+
+            useEffect(() => {
+                if (!isDataLoaded) return;
+                setSaveStatus('saving');
+                const recordKey = `logistica_record_${date}`;
+                const dataToSave = { assignments, truckStatus, absentStaffIds: Array.from(absentStaffIds), absentReasons };
+                try {
+                    localStorage.setItem(recordKey, JSON.stringify(dataToSave));
+                    localStorage.setItem('logistica_staff', JSON.stringify(staff));
+                    setTimeout(() => setSaveStatus('saved'), 600);
+                } catch (e) { console.error(e); setSaveStatus('error'); }
+            }, [assignments, truckStatus, absentStaffIds, absentReasons, staff, date, isDataLoaded]);
+
+            // --- Lógica del Negocio ---
+            const getStaffById = (id) => staff.find(s => s.id === id);
+            const getAvailableStaff = () => {
+                const assignedIds = new Set();
+                Object.values(assignments).forEach(truck => {
+                    if (!truck) return; 
+                    if (truck.driver) assignedIds.add(truck.driver);
+                    if (truck.helper1) assignedIds.add(truck.helper1);
+                    if (truck.helper2) assignedIds.add(truck.helper2);
+                });
+                return staff.filter(s => !assignedIds.has(s.id) && !absentStaffIds.has(s.id));
             };
+            const getAbsentStaff = () => staff.filter(s => absentStaffIds.has(s.id));
+            
+            const findTruckByPersonId = (personId) => {
+                for (const truckId of Object.keys(assignments)) {
+                    const truck = assignments[truckId];
+                    if (truck.driver === personId || truck.helper1 === personId || truck.helper2 === personId) return truckId;
+                }
+                return null;
+            };
+
+            const filteredTrucks = useMemo(() => {
+                if (!searchTerm.trim()) return INITIAL_TRUCKS;
+                const lowerTerm = searchTerm.toLowerCase();
+                return INITIAL_TRUCKS.filter(truckId => {
+                    if (truckId.toLowerCase().includes(lowerTerm)) return true;
+                    const data = assignments[truckId] || {};
+                    const driverName = data.driver ? getStaffById(data.driver)?.name.toLowerCase() : "";
+                    const h1Name = data.helper1 ? getStaffById(data.helper1)?.name.toLowerCase() : "";
+                    const h2Name = data.helper2 ? getStaffById(data.helper2)?.name.toLowerCase() : "";
+                    return driverName?.includes(lowerTerm) || h1Name?.includes(lowerTerm) || h2Name?.includes(lowerTerm);
+                });
+            }, [searchTerm, assignments, staff]);
+
+            // --- MANEJADORES DE ACCIONES ---
+
+            const handleSlotClick = (truckId, slotType) => {
+                if (truckStatus[truckId] === 'departed') {
+                    if (!window.confirm(`⚠️ ADVERTENCIA: El móvil ${truckId} ya está EN RUTA.\n\n¿Realmente necesitas modificar su tripulación?`)) {
+                        return;
+                    }
+                }
+                setSelectedSlot({ truckId, slotType });
+                setShowStaffModal(true);
+            };
+
+            const handleAssign = (personId) => {
+                if (!selectedSlot) return;
+                const { truckId, slotType } = selectedSlot;
+
+                if (truckStatus[truckId] === 'departed') {
+                    // Ya se validó al abrir, pero por seguridad doble check
+                }
+
+                if (personId) {
+                    const currentTruckId = findTruckByPersonId(personId);
+                    if (currentTruckId && currentTruckId !== truckId) {
+                        if (truckStatus[currentTruckId] === 'departed') {
+                            const personName = getStaffById(personId)?.name;
+                            alert(`⛔ NO PERMITIDO\n\n${personName} está en el móvil ${currentTruckId} que ya salió EN RUTA.`);
+                            return; 
+                        }
+                    }
+                }
+
+                setAssignments(prev => {
+                    const newAssignments = { ...prev };
+                    if (personId) {
+                        Object.keys(newAssignments).forEach(tId => {
+                            const truck = { ...newAssignments[tId] };
+                            let changed = false;
+                            if (truck.driver === personId) { truck.driver = null; changed = true; }
+                            if (truck.helper1 === personId) { truck.helper1 = null; changed = true; }
+                            if (truck.helper2 === personId) { truck.helper2 = null; changed = true; }
+                            if (changed) newAssignments[tId] = truck;
+                        });
+                    }
+                    const targetTruck = { ...(newAssignments[truckId] || { driver: null, helper1: null, helper2: null, observation: "" }) };
+                    targetTruck[slotType] = personId;
+                    newAssignments[truckId] = targetTruck;
+                    return newAssignments;
+                });
+                
+                setShowStaffModal(false);
+                setSelectedSlot(null);
+            };
+
+            const markAsAbsent = (id, reason) => {
+                if (!id) return;
+                const currentTruckId = findTruckByPersonId(id);
+                if (currentTruckId && truckStatus[currentTruckId] === 'departed') {
+                     const personName = getStaffById(id)?.name;
+                     alert(`⛔ No puedes marcar ausente a ${personName} porque está en el móvil ${currentTruckId} EN RUTA.`);
+                     return;
+                }
+                if (reason) setAbsentReasons(prev => ({...prev, [id]: reason}));
+                setAssignments(prev => {
+                    const newAssignments = { ...prev };
+                    Object.keys(newAssignments).forEach(tId => {
+                        const truck = { ...newAssignments[tId] };
+                        if (truck.driver === id) truck.driver = null;
+                        if (truck.helper1 === id) truck.helper1 = null;
+                        if (truck.helper2 === id) truck.helper2 = null;
+                        newAssignments[tId] = truck;
+                    });
+                    return newAssignments;
+                });
+                setAbsentStaffIds(prev => new Set(prev).add(id));
+                setShowStaffModal(false);
+            };
+
+            const handleMarkCurrentSlotAbsent = (reason) => {
+                if(!selectedSlot) return;
+                const { truckId, slotType } = selectedSlot;
+                if (truckStatus[truckId] === 'departed') {
+                    if (!window.confirm(`⚠️ El móvil ${truckId} está EN RUTA.\n¿Seguro que deseas marcar AUSENTE a este integrante?`)) {
+                        return;
+                    }
+                }
+                const currentPersonId = assignments[truckId]?.[slotType];
+                if (currentPersonId) markAsAbsent(currentPersonId, reason);
+                setShowStaffModal(false);
+            };
+
+            const markAsPresent = (id) => {
+                setAbsentStaffIds(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(id);
+                    return newSet;
+                });
+                setAbsentReasons(prev => {
+                    const newReasons = {...prev};
+                    delete newReasons[id];
+                    return newReasons;
+                });
+            };
+
+            const handleAddStaff = () => {
+                if (!newStaffData.name.trim()) return;
+                const newId = staff.length > 0 ? Math.max(...staff.map(s => s.id)) + 1 : 1;
+                const newPerson = { ...newStaffData, id: newId, isFletero: false };
+                setStaff(prev => [...prev, newPerson]);
+                setNewStaffData({ name: '', role: 'Ayudante', isDriver: false }); 
+            };
+
+            const handleDeleteStaff = (id) => {
+                if (window.confirm('¿Seguro que deseas eliminar a esta persona del sistema?')) {
+                    setAssignments(prev => {
+                        const newAssignments = { ...prev };
+                        Object.keys(newAssignments).forEach(tId => {
+                            const truck = { ...newAssignments[tId] };
+                            if (truck.driver === id) truck.driver = null;
+                            if (truck.helper1 === id) truck.helper1 = null;
+                            if (truck.helper2 === id) truck.helper2 = null;
+                            newAssignments[tId] = truck;
+                        });
+                        return newAssignments;
+                    });
+                    setAbsentStaffIds(prev => {
+                        const newSet = new Set(prev);
+                        newSet.delete(id);
+                        return newSet;
+                    });
+                    setStaff(prev => prev.filter(s => s.id !== id));
+                }
+            };
+
+            const toggleDriverStatus = (id) => {
+                setStaff(prevStaff => prevStaff.map(s => s.id === id ? { ...s, isDriver: !s.isDriver } : s));
+            };
+
+            const toggleTruckStatus = (truckId) => {
+                setTruckStatus(prev => ({...prev, [truckId]: prev[truckId] === 'departed' ? 'pending' : 'departed'}));
+            };
+            const updateObservation = (truckId, text) => {
+                setAssignments(prev => {
+                    const newAssignments = { ...prev };
+                    newAssignments[truckId] = { ...newAssignments[truckId], observation: text };
+                    return newAssignments;
+                });
+            };
+            const handleResetDay = () => {
+                if (window.confirm("¿REINICIAR TODO EL DÍA?\nSe borrarán todas las asignaciones.")) {
+                    setAssignments(createEmptyAssignments()); setTruckStatus({}); setAbsentStaffIds(new Set()); setAbsentReasons({}); setShowSettingsModal(false);
+                }
+            };
+
+            // PDF Export
+            const exportPDF = () => {
+                if (!window.jspdf) return alert("Cargando librerías...");
+                const doc = new window.jspdf.jsPDF();
+                
+                doc.setFontSize(18); doc.text("Reporte Diario de Logística", 14, 14);
+                doc.setFontSize(12); doc.text(`Fecha: ${date}`, 14, 22);
+
+                const tableConfig = { 
+                    theme: 'grid', 
+                    headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+                    styles: { fontSize: 9, cellPadding: 2, valign: 'middle' }
+                };
+                
+                const getTableData = (ids) => ids.map(id => {
+                    const d = assignments[id] || {};
+                    return [
+                        id, 
+                        d.driver ? getStaffById(d.driver).name : "-", 
+                        d.helper1 ? getStaffById(d.helper1).name : "-", 
+                        d.helper2 ? getStaffById(d.helper2).name : "-", 
+                        d.observation || ""
+                    ];
+                });
+
+                let y = 30;
+                const departed = INITIAL_TRUCKS.filter(id => truckStatus[id] === 'departed');
+                doc.setFontSize(14); doc.setTextColor(0, 128, 0); doc.text(`EN RUTA (${departed.length})`, 14, y);
+                y += 6;
+                if (departed.length) {
+                    doc.autoTable({ startY: y, head: [["Móvil", "Chofer", "Ayudante 1", "Ayudante 2", "Obs"]], body: getTableData(departed), ...tableConfig, headStyles: { fillColor: [46, 125, 50] } });
+                    y = doc.lastAutoTable.finalY + 10;
+                }
+
+                const pending = INITIAL_TRUCKS.filter(id => truckStatus[id] !== 'departed');
+                if (y > 250) { doc.addPage(); y = 20; }
+                doc.setFontSize(14); doc.setTextColor(180, 0, 0); doc.text(`PENDIENTES (${pending.length})`, 14, y);
+                y += 6;
+                if (pending.length) {
+                    doc.autoTable({ startY: y, head: [["Móvil", "Chofer", "Ayudante 1", "Ayudante 2", "Obs"]], body: getTableData(pending), ...tableConfig, headStyles: { fillColor: [183, 28, 28] } });
+                    y = doc.lastAutoTable.finalY + 10;
+                }
+
+                if (y > 250) { doc.addPage(); y = 20; }
+                const available = getAvailableStaff();
+                doc.setFontSize(14); doc.setTextColor(0,0,0); doc.text(`DISPONIBLES (${available.length})`, 14, y);
+                y += 6;
+                if(available.length) {
+                    doc.autoTable({ startY: y, head: [["Nombre", "Rol", "Detalle"]], body: available.map(p => [p.name, p.role, (p.isDriver ? 'CHOFER' : '') + (p.isFletero ? ' FLETERO' : '')]), ...tableConfig, headStyles: { fillColor: [100, 116, 139] } });
+                    y = doc.lastAutoTable.finalY + 10;
+                }
+
+                if (y > 250) { doc.addPage(); y = 20; }
+                const absents = getAbsentStaff();
+                doc.setFontSize(14); doc.setTextColor(0,0,0); doc.text(`AUSENTES (${absents.length})`, 14, y);
+                y += 6;
+                if (absents.length) {
+                    doc.autoTable({ startY: y, head: [["Nombre", "Rol", "Motivo"]], body: absents.map(p => [p.name, p.role, absentReasons[p.id] || "-"]), ...tableConfig, headStyles: { fillColor: [50, 50, 50] } });
+                }
+                
+                doc.save(`logistica_${date}.pdf`);
+            };
+
+            if (showSplash) return (
+              <div className="flex flex-col items-center justify-center h-screen bg-slate-900 text-white animate-fade-in">
+                <div className="relative mb-6">
+                  <div className="absolute inset-0 bg-blue-500 blur-xl opacity-50 rounded-full"></div>
+                  <Truck size={80} className="relative z-10 text-blue-400" />
+                </div>
+                <h1 className="text-4xl font-bold tracking-widest mb-2">LOGÍSTICA</h1>
+                <p className="text-slate-400 text-sm">Sistema de Control de Personal</p>
+                <p className="absolute bottom-10 text-xs text-slate-600">Versión 4.1.0</p>
+              </div>
+            );
+
+            return (
+                <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-white' : 'bg-gray-100 text-slate-900'} pb-20`}>
+                    {/* Header Simplificado */}
+                    <header className={`sticky top-0 z-40 p-4 shadow-md ${darkMode ? 'bg-slate-900' : 'bg-white'}`}>
+                        <div className="flex justify-between items-center mb-3">
+                            <h1 className="text-2xl font-black tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
+                                LOGÍSTICA
+                                {saveStatus === 'saving' && <Loader2 size={16} className="text-slate-400 animate-spin" />}
+                                {saveStatus === 'saved' && <Check size={16} className="text-green-500 animate-in fade-in" />}
+                            </h1>
+                            <div className="flex gap-2">
+                                <input type="date" value={date} onChange={e => setDate(e.target.value)} className="bg-transparent font-bold outline-none text-slate-900 dark:text-white" />
+                                <button onClick={() => setShowSettingsModal(true)}><Settings className="text-slate-900 dark:text-white" /></button>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-3 text-gray-400" size={18}/>
+                            <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} 
+                                className={`w-full pl-10 p-2.5 rounded-xl outline-none border-2 font-medium ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-100 border-slate-200 text-slate-900 focus:border-blue-500'}`} />
+                        </div>
+                    </header>
+
+                    <main className="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {INITIAL_TRUCKS.filter(t => t.includes(searchTerm.toUpperCase())).map(truckId => {
+                            const data = assignments[truckId] || {};
+                            const isDeparted = truckStatus[truckId] === 'departed';
+                            const isBorneo = BORNEO_TRUCKS.has(truckId);
+                            const isFletero = FLETERO_TRUCKS.has(truckId);
+                            
+                            // Estilo condicional para el header del camión
+                            let headerStyle = 'bg-blue-600 text-white';
+                            if (isDeparted) {
+                                headerStyle = darkMode ? 'bg-green-800 text-white' : 'bg-green-600 text-white';
+                            } else if (isBorneo) {
+                                headerStyle = 'bg-orange-500 text-black';
+                            } else if (isFletero) {
+                                headerStyle = 'bg-purple-600 text-white';
+                            }
+
+                            return (
+                                <div key={truckId} className={`rounded-xl border-2 p-1 ${isDeparted ? (darkMode ? 'bg-green-900/20 border-green-700' : 'bg-green-50 border-green-500') : (darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-white shadow-sm')}`}>
+                                    <div className={`flex justify-between items-center p-2 mb-1 rounded-lg ${headerStyle}`}>
+                                        <span className="text-xl font-black px-2">{truckId}</span>
+                                        <button onClick={() => toggleTruckStatus(truckId)} className={`p-2 rounded-full ${isDeparted ? 'bg-white/20 text-white' : 'bg-white/20 text-white hover:bg-white/30'}`}><Truck size={20}/></button>
+                                    </div>
+                                    
+                                    {['driver', 'helper1', 'helper2'].map(slot => (
+                                        <div key={slot} onClick={() => handleSlotClick(truckId, slot)} 
+                                            className={`mx-2 mb-2 p-2 rounded-lg border-2 border-dashed cursor-pointer ${data[slot] ? (darkMode ? 'bg-slate-800 border-slate-600' : 'bg-slate-50 border-slate-300') : 'border-slate-200 opacity-60'}`}>
+                                            <div className="text-[10px] font-medium text-gray-400 uppercase mb-1">{slot === 'driver' ? 'CHOFER' : 'AYUDANTE'}</div>
+                                            {data[slot] ? (
+                                                <div className="font-medium text-sm truncate text-gray-900 dark:text-gray-100 flex justify-between items-center">
+                                                    {getStaffById(data[slot])?.name}
+                                                    {getStaffById(data[slot])?.isDriver && <span className="text-[9px] bg-red-600 text-white px-1 rounded ml-1">CHOFER</span>}
+                                                </div>
+                                            ) : <span className="text-red-400 font-bold text-sm italic">Vacío</span>}
+                                        </div>
+                                    ))}
+                                    <input type="text" placeholder="Observación..." value={data.observation || ""} onChange={e => updateObservation(truckId, e.target.value)} 
+                                        className="w-full bg-transparent p-2 text-sm font-medium text-gray-900 dark:text-white outline-none border-t border-slate-100 dark:border-slate-800" />
+                                </div>
+                            );
+                        })}
+                    </main>
+
+                    {/* Botones Flotantes */}
+                    <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
+                        <button onClick={() => setCurrentView(currentView === 'dashboard' ? 'report' : 'dashboard')} 
+                            className={`w-14 h-14 rounded-full text-white shadow-xl flex items-center justify-center transition-colors ${currentView === 'dashboard' ? 'bg-green-600' : 'bg-blue-600'}`}>
+                            {currentView === 'dashboard' ? <ClipboardCheck size={24}/> : <Truck size={24}/>}
+                        </button>
+                    </div>
+
+                    {/* Modales */}
+                    <StaffSelectorModal isOpen={showStaffModal} onClose={() => setShowStaffModal(false)} availableStaff={getAvailableStaff()} onAssign={handleAssign} onMarkAbsent={handleMarkCurrentSlotAbsent} darkMode={darkMode} truckId={selectedSlot?.truckId} isTruckDeparted={selectedSlot && truckStatus[selectedSlot.truckId] === 'departed'} />
+                    <ManageStaffModal isOpen={showManageStaffModal} onClose={() => setShowManageStaffModal(false)} staff={staff} onAdd={handleAddStaff} onDelete={handleDeleteStaff} onToggleDriver={toggleDriverStatus} newStaffData={newStaffData} setNewStaffData={setNewStaffData} darkMode={darkMode} />
+                    <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} darkMode={darkMode} toggleTheme={() => setDarkMode(!darkMode)} onOpenManageStaff={() => setShowManageStaffModal(true)} onResetDay={handleResetDay} />
+                </div>
+            );
         }
 
-        const app = {
-            data: { user: null, transactions: [], reminders: [], loans: [], notes: {}, settings: { darkMode: false, profilePic: null } },
-            fullDB: {}, 
-            currentMonthOffset: 0,
-
-            init: () => {
-                const loaded = DB.load();
-                app.fullDB = loaded || {};
-                
-                const now = new Date();
-                const todayDate = now.toISOString().split('T')[0];
-                const localIso = new Date(now - now.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-                
-                const tDate = document.getElementById('transDate'); if(tDate && !tDate.value) tDate.value = todayDate;
-                const rDate = document.getElementById('remDate'); if(rDate && !rDate.value) rDate.value = localIso;
-                const lDate = document.getElementById('loanDate'); if(lDate && !lDate.value) lDate.value = todayDate;
-
-                const picInput = document.getElementById('profilePicInput');
-                if(picInput) picInput.addEventListener('change', app.handleProfilePicUpload);
-                
-                app.updateClock(); setInterval(app.updateClock, 1000);
-                app.getWeather();
-                setInterval(app.checkReminders, 30000);
-            },
-
-            toggleSidebar: () => {
-                const sb = document.getElementById('mainSidebar');
-                const ov = document.getElementById('sidebarOverlay');
-                // Check if currently open (translated to 0) or closed (translated to -100%)
-                const isOpen = sb.classList.contains('sidebar-open');
-                
-                if (isOpen) {
-                    sb.classList.remove('sidebar-open');
-                    sb.classList.add('sidebar-closed');
-                    ov.classList.add('hidden');
-                } else {
-                    sb.classList.remove('sidebar-closed');
-                    sb.classList.add('sidebar-open');
-                    ov.classList.remove('hidden');
-                }
-            },
-
-            // Close sidebar when clicking a link on mobile
-            navigate: (id) => {
-                // ... existing navigate logic ...
-                document.querySelectorAll('.sidebar-link').forEach(e=>e.classList.remove('active')); 
-                document.getElementById(`nav-${id}`).classList.add('active');
-                
-                ['dashboard','transactions','loans','calendar','reminders','settings'].forEach(v => {
-                    const el = document.getElementById(`view-${v}`);
-                    if(el) el.classList.add('hidden');
-                });
-                const view = document.getElementById(`view-${id}`);
-                if(view) view.classList.remove('hidden');
-                
-                if(id==='dashboard') app.renderChart(); 
-                if(id==='calendar') app.renderCalendar();
-
-                // Close mobile menu if open
-                if(window.innerWidth < 768) {
-                    app.toggleSidebar();
-                }
-            },
-
-            // --- Copied Logic from Previous (Kept intact but optimized for mobile calls) ---
-            getWeather: () => {
-                const setW = (t) => {
-                    const el = document.getElementById('weatherWidget');
-                    if(el) el.innerHTML = `<span class="text-blue-900 dark:text-blue-300 font-bold flex gap-1 items-center"><i class="fas fa-sun text-yellow-500"></i> ${t}°</span>`;
-                };
-                const setFallback = () => {
-                    const el = document.getElementById('weatherWidget');
-                    if(el) el.innerHTML = `<span class="text-slate-400 text-xs"><i class="fas fa-map-marker-alt"></i> ASU</span>`;
-                    fetch('https://api.open-meteo.com/v1/forecast?latitude=-25.2637&longitude=-57.5759&current_weather=true')
-                        .then(r=>r.json()).then(d=>setW(d.current_weather.temperature)).catch(()=>{});
-                };
-                if ("geolocation" in navigator) {
-                    navigator.geolocation.getCurrentPosition(async (pos) => {
-                        try {
-                            const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current_weather=true`);
-                            const d = await r.json(); setW(d.current_weather.temperature);
-                        } catch(e) { setFallback(); }
-                    }, () => setFallback());
-                } else setFallback();
-            },
-
-            downloadBackup: () => {
-                const dataStr = JSON.stringify(app.fullDB, null, 2);
-                const blob = new Blob([dataStr], {type: "application/json"});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `Backup_${app.data.user}_${new Date().toLocaleDateString('es-PY').replace(/\//g,'-')}.json`;
-                a.click();
-                app.showToast("Descargado", "success");
-            },
-
-            showToast: (msg, type='info') => {
-                const c = document.getElementById('toastContainer');
-                const t = document.createElement('div');
-                let col = type==='success'?'bg-emerald-600':(type==='error'?'bg-rose-600':'bg-slate-800');
-                t.className = `${col} text-white px-4 py-3 rounded-xl shadow-xl flex gap-3 text-sm font-medium toast-enter items-center justify-center w-full`;
-                t.innerHTML = `<i class="fas ${type==='success'?'fa-check-circle':(type==='error'?'fa-exclamation-circle':'fa-info-circle')}"></i> ${msg}`;
-                c.appendChild(t);
-                setTimeout(() => { t.classList.remove('toast-enter'); t.classList.add('toast-exit'); setTimeout(()=>t.remove(),500); }, 2500);
-            },
-
-            login: () => {
-                const u = document.getElementById('loginUser').value; const p = document.getElementById('loginPass').value;
-                const d = app.fullDB[u];
-                if(d && d.password === p) {
-                    app.data.user = u; document.getElementById('sidebarUserName').innerText = u;
-                    app.data.transactions = d.transactions||[]; app.data.reminders = d.reminders||[]; app.data.loans = d.loans||[]; app.data.notes = d.notes||{}; app.data.settings = d.settings||{darkMode:false};
-                    if(app.data.settings.darkMode) document.documentElement.classList.add('dark');
-                    if(app.data.settings.profilePic) { document.getElementById('sidebarInitial').classList.add('hidden'); document.getElementById('sidebarImg').src = app.data.settings.profilePic; document.getElementById('sidebarImg').classList.remove('hidden'); }
-                    document.getElementById('authScreen').classList.add('hidden');
-                    document.getElementById('splashScreen').classList.remove('hidden'); document.getElementById('splashUser').innerText = u;
-                    setTimeout(()=>{ document.getElementById('splashScreen').classList.add('hidden'); document.getElementById('appContainer').classList.remove('hidden'); app.updateUI(); app.renderCalendar(); }, 1500);
-                } else alert("Datos incorrectos");
-            },
-            register: () => {
-                const u = document.getElementById('regUser').value; const p = document.getElementById('regPass').value;
-                if(!u || !p) return alert("Completa campos");
-                if(app.fullDB[u]) return alert("Usuario existe");
-                app.fullDB[u] = { password:p, transactions:[], reminders:[], loans:[], notes:{}, settings:{darkMode:false} };
-                DB.save(app.fullDB); alert("Registrado"); app.toggleAuth('login');
-            },
-            logout: () => location.reload(),
-            toggleAuth: (m) => { document.getElementById('loginForm').classList.toggle('hidden', m==='register'); document.getElementById('registerForm').classList.toggle('hidden', m!=='register'); },
-            saveData: () => {
-                if(!app.data.user) return;
-                app.fullDB[app.data.user] = { password:app.fullDB[app.data.user].password, transactions:app.data.transactions, reminders:app.data.reminders, loans:app.data.loans, notes:app.data.notes, settings:app.data.settings };
-                DB.save(app.fullDB); app.updateUI();
-            },
-            formatInput: (e) => { let v = e.value.replace(/\D/g,''); e.value = v.replace(/\B(?=(\d{3})+(?!\d))/g, "."); },
-            addTransaction: () => {
-                const d = document.getElementById('transDesc').value; const a = parseFloat(document.getElementById('transAmount').value.replace(/\./g,''));
-                if(!d || isNaN(a)) return alert("Error");
-                app.data.transactions.unshift({ id:Date.now(), type:document.getElementById('transType').value, desc:d, amount:a, category:document.getElementById('transCat').value, date:document.getElementById('transDate').value+'T'+new Date().toTimeString().split(' ')[0] });
-                app.saveData(); document.getElementById('transDesc').value=''; document.getElementById('transAmount').value=''; app.showToast("Guardado");
-            },
-            deleteTransaction: (id) => { if(confirm("¿Borrar?")){ app.data.transactions=app.data.transactions.filter(t=>t.id!==id); app.saveData(); } },
-            addLoan: () => { const n=document.getElementById('loanName').value; const a=parseFloat(document.getElementById('loanAmount').value.replace(/\./g,'')); if(!n) return alert("Error"); app.data.loans.push({id:Date.now(), borrower:n, amount:a, promiseDate:document.getElementById('loanDate').value, dateLent:new Date().toISOString().split('T')[0]}); app.saveData(); app.renderLoansTable(); document.getElementById('loanName').value=''; document.getElementById('loanAmount').value=''; },
-            deleteLoan: (id) => { if(confirm("¿Borrar?")){ app.data.loans=app.data.loans.filter(l=>l.id!==id); app.saveData(); app.renderLoansTable(); } },
-            renderLoansTable: () => {
-                const tb = document.getElementById('loansTableBody'); tb.innerHTML='';
-                app.data.loans.forEach(l=>{ 
-                    const d = Math.ceil((new Date(l.promiseDate)-new Date())/86400000);
-                    tb.innerHTML+=`<tr class="hover:bg-slate-50 dark:hover:bg-slate-700"><td class="p-4">${l.borrower}</td><td class="p-4">${l.dateLent}</td><td class="p-4 ${d<0?'text-red-500':''}">${l.promiseDate}</td><td class="p-4 text-right">${l.amount.toLocaleString()}</td><td class="p-4 text-center"><button onclick="app.deleteLoan(${l.id})" class="text-red-500"><i class="fas fa-trash"></i></button></td></tr>`; 
-                });
-            },
-            updateClock: () => { document.getElementById('clockTime').innerText=new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}); document.getElementById('clockDate').innerText=new Date().toLocaleDateString(); },
-            updateUI: () => {
-                let b=0, i=0, e=0; app.data.transactions.forEach(t=>{ if(t.type==='income'){b+=t.amount; i+=t.amount;}else{b-=t.amount; e+=t.amount;} });
-                document.getElementById('dashBalance').innerText=b.toLocaleString('es-PY'); document.getElementById('dashIncome').innerText=i.toLocaleString('es-PY'); document.getElementById('dashExpense').innerText=e.toLocaleString('es-PY');
-                
-                const ac = document.getElementById('alertsContainer'); ac.innerHTML='';
-                const active = app.data.reminders.filter(r=>r.status!=='paid').slice(0,3);
-                if(active.length>0) {
-                    document.getElementById('alertsWidget').classList.remove('hidden');
-                    active.forEach(r=>{
-                        const d = Math.ceil((new Date(r.date)-new Date())/86400000);
-                        let c = d<0 ? 'bg-red-600 text-white' : 'bg-green-100 text-green-800';
-                        ac.innerHTML+=`<div class="p-3 rounded-xl ${c} flex justify-between items-center shadow-sm"><span class="text-xs font-bold truncate pr-2">${r.title} (${d}d)</span><button onclick="app.updateReminderStatus(${r.id},'paid')" class="bg-white/50 px-3 py-1 rounded-lg text-xs font-bold">OK</button></div>`;
-                    });
-                } else document.getElementById('alertsWidget').classList.add('hidden');
-
-                const tb = document.getElementById('transactionsTableBody'); const rt = document.getElementById('dashRecentTable'); tb.innerHTML=''; rt.innerHTML='';
-                app.data.transactions.slice(0,10).forEach(t=>{
-                    const row=`<tr class="hover:bg-slate-50 dark:hover:bg-slate-700 border-b dark:border-slate-800 last:border-0"><td class="p-4">${new Date(t.date).toLocaleDateString(undefined,{day:'2-digit',month:'2-digit'})}</td><td class="p-4 dark:text-slate-200 font-medium">${t.desc}</td><td class="p-4 text-right font-bold ${t.type==='income'?'text-green-600':'text-red-600'}">${t.amount.toLocaleString()}</td><td class="p-4 text-center"><button onclick="app.deleteTransaction(${t.id})" class="text-slate-400 hover:text-red-500"><i class="fas fa-trash"></i></button></td></tr>`;
-                    tb.innerHTML+=row; if(tb.children.length<=5) rt.innerHTML+=row;
-                });
-                const rtb = document.getElementById('remindersTable'); rtb.innerHTML='';
-                app.data.reminders.forEach(r=>{
-                    rtb.innerHTML+=`<tr class="border-b dark:border-slate-800 last:border-0"><td class="p-4 dark:text-slate-200 font-medium">${r.title}</td><td class="p-4 text-xs">${new Date(r.date).toLocaleDateString()}</td><td class="p-4 text-center text-xs uppercase">${r.status}</td><td class="p-4 text-center"><button onclick="app.updateReminderStatus(${r.id},'paid')" class="text-green-500 mx-2 text-lg"><i class="fas fa-check-circle"></i></button><button onclick="app.deleteReminder(${r.id})" class="text-slate-400 hover:text-red-500 mx-2"><i class="fas fa-trash"></i></button></td></tr>`;
-                });
-            },
-            renderChart: () => {
-                const ctx = document.getElementById('expenseChart').getContext('2d'); if(app.chartInstance) app.chartInstance.destroy();
-                const d={}; app.data.transactions.filter(t=>t.type==='expense').forEach(t=>{d[t.category]=(d[t.category]||0)+t.amount});
-                app.chartInstance = new Chart(ctx, {type:'doughnut', data:{labels:Object.keys(d), datasets:[{data:Object.values(d), backgroundColor:['#ef4444','#f97316','#eab308','#22c55e','#3b82f6']}]}, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom', labels:{boxWidth:12, font:{size:10}}}}}});
-            },
-            handleProfilePicUpload: (e) => { const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=(ev)=>{app.data.settings.profilePic=ev.target.result; app.saveData(); app.updateProfilePicUI();}; r.readAsDataURL(f); } },
-            updateProfilePicUI: () => {
-                const p = app.data.settings.profilePic; const i = document.getElementById('sidebarInitial'); const img = document.getElementById('sidebarImg');
-                if(p){ i.classList.add('hidden'); img.src=p; img.classList.remove('hidden'); } else { i.innerText=app.data.user.charAt(0); i.classList.remove('hidden'); img.classList.add('hidden'); }
-            },
-            toggleDarkMode: () => { app.data.settings.darkMode=!app.data.settings.darkMode; app.saveData(); },
-            changeMonth: (o) => { app.currentMonthOffset+=o; app.renderCalendar(); },
-            renderCalendar: () => {
-                const now=new Date(); let tm=now.getMonth()+app.currentMonthOffset; let ty=now.getFullYear();
-                while(tm>11){tm-=12;ty++;} while(tm<0){tm+=12;ty--;}
-                const date=new Date(ty,tm,1);
-                document.getElementById('calCurrentMonth').innerText=date.toLocaleString('es-PY',{month:'long',year:'numeric'});
-                const g=document.getElementById('calendarGrid'); g.innerHTML='';
-                for(let i=0;i<date.getDay();i++) g.innerHTML+='<div></div>';
-                for(let i=1;i<=new Date(ty,tm+1,0).getDate();i++){
-                    const dStr=`${ty}-${String(tm+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-                    const bg=(app.data.notes[dStr]||app.data.reminders.some(r=>r.date.startsWith(dStr)&&r.status!=='paid')) ? 'bg-blue-100 dark:bg-blue-900 border-blue-200' : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700';
-                    g.innerHTML+=`<div onclick="app.openNoteModal('${dStr}')" class="aspect-square border rounded-lg p-1 cursor-pointer ${bg} flex flex-col justify-between items-center"><div class="text-[10px] font-bold dark:text-slate-300">${i}</div><div class="flex gap-0.5">${(app.data.notes[dStr]?'<div class="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>':'')}${(app.data.reminders.some(r=>r.date.startsWith(dStr)&&r.status!=='paid')?'<div class="w-1.5 h-1.5 bg-red-500 rounded-full"></div>':'')}</div></div>`;
-                }
-            },
-            openNoteModal: (d) => { app.selectedDateForNote=d; document.getElementById('noteDateTitle').innerText=d; document.getElementById('dayNoteInput').value=app.data.notes[d]||''; document.getElementById('noteModal').classList.remove('hidden'); },
-            saveNote: () => { app.data.notes[app.selectedDateForNote]=document.getElementById('dayNoteInput').value; app.saveData(); document.getElementById('noteModal').classList.add('hidden'); app.renderCalendar(); },
-            addReminder: () => { 
-                const t=document.getElementById('remTitle').value; const d=document.getElementById('remDate').value;
-                if(!t||!d) return alert("Datos?");
-                app.data.reminders.push({id:Date.now(), title:t, date:d, sound:document.getElementById('remSound').checked, alerted:false, status:'pending'});
-                app.saveData(); alert("OK");
-            },
-            updateReminderStatus: (id, s) => { const r=app.data.reminders.find(x=>x.id===id); if(r){r.status=s; app.saveData();} },
-            deleteReminder: (id) => { if(confirm("¿Borrar?")){ app.data.reminders=app.data.reminders.filter(r=>r.id!==id); app.saveData(); } },
-            checkReminders: () => {
-                const now = new Date();
-                app.data.reminders.forEach(r => { if(r.status==='pending' && !r.alerted && now>=new Date(r.date)){ r.alerted=true; document.getElementById('alertMessage').innerText=r.title; document.getElementById('alertModal').classList.remove('hidden'); playBeep(); app.saveData(); } });
-            },
-            closeAlert: () => document.getElementById('alertModal').classList.add('hidden'),
-            openExportModal: () => document.getElementById('exportModal').classList.remove('hidden'),
-            setExportRange: (t) => { /* Range logic simplified */ },
-            generateExport: (t) => { /* Export logic simplified */ document.getElementById('exportModal').classList.add('hidden'); },
-            changePassword: () => { /* Password logic simplified */ }
-        };
-        window.onload = app.init;
+        const root = createRoot(document.getElementById('root'));
+        root.render(<App />);
     </script>
 </body>
 </html>
