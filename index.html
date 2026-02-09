@@ -64,7 +64,7 @@
           Truck, Users, Moon, Sun, FileSpreadsheet, CheckCircle2, 
           AlertCircle, UserMinus, UserX, UserPlus, Settings, X, Search, 
           Plus, ToggleLeft, ToggleRight, Trash2, RotateCcw, 
-          Check, Loader2, ClipboardCheck
+          Check, Loader2, FileText, Lock
         } from 'lucide-react';
 
         // --- CONFIGURACIÓN DE FLOTA ---
@@ -276,7 +276,7 @@
                               `}
                             >
                               <div>
-                                <div className="font-medium text-slate-900 dark:text-white text-base">{person.name}</div>
+                                <div className="font-normal text-black dark:text-white text-base">{person.name}</div>
                                 <div className="text-xs font-normal text-slate-500 dark:text-slate-400 uppercase mt-0.5">{person.role}</div>
                               </div>
                               <div className="flex gap-1">
@@ -732,7 +732,7 @@
                 </div>
                 <h1 className="text-4xl font-bold tracking-widest mb-2">LOGÍSTICA</h1>
                 <p className="text-slate-400 text-sm">Sistema de Control de Personal</p>
-                <p className="absolute bottom-10 text-xs text-slate-600">Versión 4.1.0</p>
+                <p className="absolute bottom-10 text-xs text-slate-600">Versión 5.0.0</p>
               </div>
             );
 
@@ -768,7 +768,7 @@
                             // Estilo condicional para el header del camión
                             let headerStyle = 'bg-blue-600 text-white';
                             if (isDeparted) {
-                                headerStyle = darkMode ? 'bg-green-800 text-white' : 'bg-green-600 text-white';
+                                headerStyle = 'bg-green-600 text-white'; // Verde siempre domina si salió
                             } else if (isBorneo) {
                                 headerStyle = 'bg-orange-500 text-black';
                             } else if (isFletero) {
@@ -787,7 +787,7 @@
                                             className={`mx-2 mb-2 p-2 rounded-lg border-2 border-dashed cursor-pointer ${data[slot] ? (darkMode ? 'bg-slate-800 border-slate-600' : 'bg-slate-50 border-slate-300') : 'border-slate-200 opacity-60'}`}>
                                             <div className="text-[10px] font-medium text-gray-400 uppercase mb-1">{slot === 'driver' ? 'CHOFER' : 'AYUDANTE'}</div>
                                             {data[slot] ? (
-                                                <div className="font-medium text-sm truncate text-gray-900 dark:text-gray-100 flex justify-between items-center">
+                                                <div className="font-normal text-sm truncate text-black dark:text-white flex justify-between items-center">
                                                     {getStaffById(data[slot])?.name}
                                                     {getStaffById(data[slot])?.isDriver && <span className="text-[9px] bg-red-600 text-white px-1 rounded ml-1">CHOFER</span>}
                                                 </div>
@@ -802,10 +802,10 @@
                     </main>
 
                     {/* Botones Flotantes */}
-                    <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-50">
-                        <button onClick={() => setCurrentView(currentView === 'dashboard' ? 'report' : 'dashboard')} 
-                            className={`w-14 h-14 rounded-full text-white shadow-xl flex items-center justify-center transition-colors ${currentView === 'dashboard' ? 'bg-green-600' : 'bg-blue-600'}`}>
-                            {currentView === 'dashboard' ? <ClipboardCheck size={24}/> : <Truck size={24}/>}
+                    <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[9999]">
+                        <button type="button" onClick={() => setCurrentView(currentView === 'dashboard' ? 'report' : 'dashboard')} 
+                            className={`w-14 h-14 rounded-full text-white shadow-xl flex items-center justify-center transition-colors pointer-events-auto cursor-pointer ${currentView === 'dashboard' ? 'bg-green-600' : 'bg-blue-600'}`}>
+                            {currentView === 'dashboard' ? <FileText size={24}/> : <Truck size={24}/>}
                         </button>
                     </div>
 
